@@ -17,7 +17,7 @@ root.render(
                     fov: 45,
                     near: 0.1,
                     far: 200,
-                    position: [0, 0, 15]
+                    position: [0, 0, 25]
                     //position: [0, 0, 0.001]
                 }}
                 style={{ position: 'absolute', top: 0, left: 0, zIndex: 0 }}
