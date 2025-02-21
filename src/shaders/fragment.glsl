@@ -1,7 +1,7 @@
 #define PI 3.1415926535897932384626433832795
 uniform float uTime;
 
-varying vec3 vColor;
+uniform vec3 uColor;
 
 vec2 rotate(vec2 uv, float rotation, vec2 mid);
 
@@ -12,12 +12,7 @@ void main() {
     float strength = 0.15 / (distance(vec2(rotatedUv.x, (rotatedUv.y - 0.5) * 5.0 + 0.5), vec2(0.5)));
     strength *= 0.15 / (distance(vec2(rotatedUv.y, (rotatedUv.x - 0.5) * 5.0 + 0.5), vec2(0.5)));
 
-    // Coloring the texture
-    vec3 blackColor = vec3(0.0);
-    vec3 uvColor = vec3(gl_PointCoord, 1.0);
-    vec3 mixedColor = mix(blackColor, uvColor, strength);
-
-    gl_FragColor = vec4(mixedColor, 1.0);
+    gl_FragColor = vec4(uColor, strength);
 
 }
 

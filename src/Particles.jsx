@@ -3,7 +3,7 @@ import { useFrame, extend } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import { useControls } from 'leva'
 import { Perf } from 'r3f-perf'
-import * as THREE from 'three'
+import { AdditiveBlending, Color } from 'three'
 
 import customVertexShader from './shaders/vertex.glsl'
 import customFragmentShader from './shaders/fragment.glsl'
@@ -13,6 +13,7 @@ const CustomMaterial = shaderMaterial(
         uSize: 2.0,
         uTime: 0.0,
         uAnimate: 1.0, // 1.0: true, 0.0: false
+        uColor: new Color('#ffffff')
     },
     customVertexShader,
     customFragmentShader
@@ -41,6 +42,9 @@ export default function Particles() {
 
         animate: {
             value: true
+        },
+        color: {
+            value: '#00ecff'
         }
     })
 
@@ -106,6 +110,12 @@ export default function Particles() {
         animateRef.current = particlesControls.animate
     }, [particlesControls.animate])
 
+    useEffect(() => {
+        if (materialRef.current) {
+            materialRef.current.uColor = new Color(particlesControls.color)
+        }
+    }, [particlesControls.color])
+
     // Update geometry attributes when memoized arrays change.
     useEffect(() => {
         if (geometryRef.current) {
@@ -163,7 +173,7 @@ export default function Particles() {
                         ref={materialRef}
                         vertexColors
                         depthWrite={false}
-                        blending={THREE.AdditiveBlending}
+                        blending={AdditiveBlending}
                     />
                 </points>
             </Center>
