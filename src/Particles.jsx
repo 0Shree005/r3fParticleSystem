@@ -1,8 +1,8 @@
-import { shaderMaterial, OrbitControls, Center } from '@react-three/drei'
-import { useFrame, extend } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
-import { useControls } from 'leva'
+import { useFrame, extend } from '@react-three/fiber'
+import { shaderMaterial, OrbitControls, Center } from '@react-three/drei'
 import { Perf } from 'r3f-perf'
+import { useControls } from 'leva'
 import { AdditiveBlending, Color } from 'three'
 
 import customVertexShader from './shaders/vertex.glsl'
@@ -13,7 +13,8 @@ const CustomMaterial = shaderMaterial(
         uSize: 2.0,
         uTime: 0.0,
         uAnimate: 1.0, // 1.0: true, 0.0: false
-        uColor: new Color('#ffffff')
+        uColor: new Color('#ffffff'),
+        uColorMode: 0.0, // 0.0: uv, 1.0: custom
     },
     customVertexShader,
     customFragmentShader
@@ -28,25 +29,30 @@ export default function Particles() {
             value: 100.0,
             min: 0.1,
             max: 200.0,
-            step: 0.01
+            step: 0.01,
         },
-
         distribution: {
             value: 'surface',
             options: {
                 Surface: 'surface',
                 Random: 'random',
-                Uniform: 'uniform'
+                Uniform: 'uniform',
             },
         },
-
-        animate: {
-            value: true
+        animate: { value: false },
+        colorMode: {
+            value: 'uv',
+            options: {
+                UV: 'uv',
+                Custom: 'custom',
+            },
         },
         color: {
-            value: '#00ecff'
-        }
+            value: '#00ecff',
+        },
     })
+
+    console.log(particlesControls)
 
     const perfControls = useControls('Performance', { perfVisible: true })
     const orbitControls = useControls('Orbit Controls', {
@@ -115,6 +121,12 @@ export default function Particles() {
             materialRef.current.uColor = new Color(particlesControls.color)
         }
     }, [particlesControls.color])
+
+    useEffect(() => {
+        if (materialRef.current) {
+            materialRef.current.uColorMode = particlesControls.colorMode === 'custom' ? 1.0 : 0.0;
+        }
+    }, [particlesControls.colorMode]);
 
     // Update geometry attributes when memoized arrays change.
     useEffect(() => {
