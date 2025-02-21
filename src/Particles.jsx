@@ -1,6 +1,6 @@
 import { shaderMaterial, OrbitControls, Center } from '@react-three/drei'
 import { useFrame, extend } from '@react-three/fiber'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useControls } from 'leva'
 import { Perf } from 'r3f-perf'
 import * as THREE from 'three'
@@ -20,72 +20,80 @@ const CustomMaterial = shaderMaterial(
 extend({ CustomMaterial })
 
 export default function Particles() {
-    /*
-     * Leva controls
-     */
+    // Leva controls for particle size and distribution mode
     const particlesControls = useControls('Particles', {
-        pSize: {
-            value: 100.0,
-            min: 0.1,
-            max: 200.0,
-            step: 0.01
+        pSize: { value: 100.0, min: 0.1, max: 200.0, step: 0.01 },
+        distribution: {
+            value: 'surface',
+            options: { Surface: 'surface', Random: 'random', Uniform: 'uniform' },
         },
     })
 
-    const perfControls = useControls('Performance', {
-        perfVisible: true
-    })
-
+    const perfControls = useControls('Performance', { perfVisible: true })
     const orbitControls = useControls('Orbit Controls', {
         autoRotate: false,
-        autoRotateSpeed: {
-            value: 0.01,
-            min: 0.01,
-            max: 10.0,
-            step: 0.001
-        },
+        autoRotateSpeed: { value: 0.01, min: 0.01, max: 10.0, step: 0.001 },
     })
 
-    const materialRef = useRef()
     const particlesCount = 10000
-    const positionsArray = new Float32Array(particlesCount * 3)
-    const scalesArray = new Float32Array(particlesCount * 1)
-    const randomsArray = new Float32Array(particlesCount * 1)
     const sphereRadius = 5
 
-    for (let i = 0; i < particlesCount; i++) {
-        const phi = Math.random() * 2 * Math.PI
-        const cosTheta = Math.random() * 2 - 1
-        const theta = Math.acos(cosTheta)
+    // Generate positions, scales, and random values in one memoized loop.
+    const { positions, scales, randoms } = useMemo(() => {
+        const positions = new Float32Array(particlesCount * 3)
+        const scales = new Float32Array(particlesCount)
+        const randoms = new Float32Array(particlesCount)
+        for (let i = 0; i < particlesCount; i++) {
+            const phi = Math.random() * 2 * Math.PI
+            const cosTheta = Math.random() * 2 - 1
+            const theta = Math.acos(cosTheta)
 
-        // Points on the surface of the sphere
-        const radius = sphereRadius
+            // Choose the radius based on the distribution option from leva
+            let r = sphereRadius
+            if (particlesControls.distribution === 'random') {
+                r = sphereRadius * Math.random()
+            } else if (particlesControls.distribution === 'uniform') {
+                r = sphereRadius * Math.cbrt(Math.random())
+            }
 
-        // Points randomly distributed inside the sphere
-        //const radius = sphereRadius * Math.random()
+            // Compute Cartesian coordinates
+            const x = r * Math.sin(theta) * Math.cos(phi)
+            const y = r * Math.sin(theta) * Math.sin(phi)
+            const z = r * Math.cos(theta)
 
-        // Points uniformly distributed inside the sphere
-        //const radius = sphereRadius * Math.cbrt(Math.random())
+            positions[i * 3 + 0] = x
+            positions[i * 3 + 1] = y
+            positions[i * 3 + 2] = z
 
-        // Convert spherical coordinates to Cartesian coordinates
-        const x = radius * Math.sin(theta) * Math.cos(phi)
-        const y = radius * Math.sin(theta) * Math.sin(phi)
-        const z = radius * Math.cos(theta)
+            // Generate random scale and random values for each particle
+            scales[i] = Math.random()
+            randoms[i] = Math.random()
+        }
+        return { positions, scales, randoms }
+    }, [particlesCount, sphereRadius, particlesControls.distribution])
 
-        positionsArray[i * 3 + 0] = x
-        positionsArray[i * 3 + 1] = y
-        positionsArray[i * 3 + 2] = z
-
-        scalesArray[i] = Math.random()
-        randomsArray[i] = Math.random()
-    }
-
-    const pSizeRef = useRef(particlesControls.pSize);
+    // Reference to geometry and material
+    const geometryRef = useRef()
+    const materialRef = useRef()
+    const pSizeRef = useRef(particlesControls.pSize)
 
     useEffect(() => {
-        pSizeRef.current = particlesControls.pSize;
-    }, [particlesControls.pSize]);
+        pSizeRef.current = particlesControls.pSize
+    }, [particlesControls.pSize])
 
+    // Update geometry attributes when memoized arrays change.
+    useEffect(() => {
+        if (geometryRef.current) {
+            geometryRef.current.attributes.position.array = positions
+            geometryRef.current.attributes.position.needsUpdate = true
+
+            geometryRef.current.attributes.aScale.array = scales
+            geometryRef.current.attributes.aScale.needsUpdate = true
+
+            geometryRef.current.attributes.aRandom.array = randoms
+            geometryRef.current.attributes.aRandom.needsUpdate = true
+        }
+    }, [positions, scales, randoms])
 
     useFrame((state, delta) => {
         if (materialRef.current) {
@@ -97,26 +105,30 @@ export default function Particles() {
     return (
         <>
             <color args={['#000000']} attach="background" />
-            <OrbitControls autoRotate={orbitControls.autoRotate} autoRotateSpeed={orbitControls.autoRotateSpeed} />
-            {perfControls.perfVisible ? <Perf position='bottom-right' /> : null}
+            <OrbitControls
+                autoRotate={orbitControls.autoRotate}
+                autoRotateSpeed={orbitControls.autoRotateSpeed}
+                enablePan={false}
+            />
+            {perfControls.perfVisible ? <Perf position="bottom-right" /> : null}
             <Center>
                 <points>
-                    <bufferGeometry>
+                    <bufferGeometry ref={geometryRef}>
                         <bufferAttribute
                             attach="attributes-position"
-                            array={positionsArray}
-                            count={positionsArray.length / 3}
+                            array={positions}
+                            count={positions.length / 3}
                             itemSize={3}
                         />
                         <bufferAttribute
                             attach="attributes-aScale"
-                            array={scalesArray}
+                            array={scales}
                             count={particlesCount}
                             itemSize={1}
                         />
                         <bufferAttribute
                             attach="attributes-aRandom"
-                            array={randomsArray}
+                            array={randoms}
                             count={particlesCount}
                             itemSize={1}
                         />
