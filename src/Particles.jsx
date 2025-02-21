@@ -12,6 +12,7 @@ const CustomMaterial = shaderMaterial(
     {
         uSize: 2.0,
         uTime: 0.0,
+        uAnimate: 1.0, // 1.0: true, 0.0: false
     },
     customVertexShader,
     customFragmentShader
@@ -22,17 +23,36 @@ extend({ CustomMaterial })
 export default function Particles() {
     // Leva controls for particle size and distribution mode
     const particlesControls = useControls('Particles', {
-        pSize: { value: 100.0, min: 0.1, max: 200.0, step: 0.01 },
+        pSize: {
+            value: 100.0,
+            min: 0.1,
+            max: 200.0,
+            step: 0.01
+        },
+
         distribution: {
             value: 'surface',
-            options: { Surface: 'surface', Random: 'random', Uniform: 'uniform' },
+            options: {
+                Surface: 'surface',
+                Random: 'random',
+                Uniform: 'uniform'
+            },
         },
+
+        animate: {
+            value: true
+        }
     })
 
     const perfControls = useControls('Performance', { perfVisible: true })
     const orbitControls = useControls('Orbit Controls', {
         autoRotate: false,
-        autoRotateSpeed: { value: 0.01, min: 0.01, max: 10.0, step: 0.001 },
+        autoRotateSpeed: {
+            value: 0.01,
+            min: 0.01,
+            max: 10.0,
+            step: 0.001
+        },
     })
 
     const particlesCount = 10000
@@ -76,10 +96,15 @@ export default function Particles() {
     const geometryRef = useRef()
     const materialRef = useRef()
     const pSizeRef = useRef(particlesControls.pSize)
+    const animateRef = useRef(particlesControls.animate)
 
     useEffect(() => {
         pSizeRef.current = particlesControls.pSize
     }, [particlesControls.pSize])
+
+    useEffect(() => {
+        animateRef.current = particlesControls.animate
+    }, [particlesControls.animate])
 
     // Update geometry attributes when memoized arrays change.
     useEffect(() => {
@@ -99,6 +124,7 @@ export default function Particles() {
         if (materialRef.current) {
             materialRef.current.uTime += delta
             materialRef.current.uSize = pSizeRef.current * window.devicePixelRatio
+            materialRef.current.uAnimate = animateRef.current ? 1.0 : 0.0
         }
     })
 
